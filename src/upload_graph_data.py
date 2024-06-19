@@ -72,4 +72,52 @@ class CardGraphDatabase:
             type=card_set.type
         )
         return result.single()[0]
+    
+    @staticmethod
+    def _create_card_type_rel(tx, card):
+        result = tx.run(
+            "MATCH (card:Card {name: $card_name}), (type:Type {name: $type_name}) ",
+            "CREATE (card)-[:IS_A]->(type) ",
+            card_name=card.name,
+            type_name=card.type
+        )
+        return result.single()[0]
+    
+    @staticmethod
+    def _create_card_supertype_rel(tx, card):
+        results = []
+        for supertype in card.supertypes:
+            results.append(tx.run(
+                "MATCH (card:Card {name: $card_name}), (spr:SuperType {name: $card_supertype}) ",
+                "CREATE (card)->[:IS]->(spr) ",
+                card_name=card.name,
+                card_supertype=supertype
+            ).single()[0])
+        return results
+    
+    @staticmethod
+    def _create_card_subtype_rel(tx, card):
+        results = []
+        for subtype in card.subtypes:
+            results.append(
+                tx.run(
+                    "MATCH (card:Card {name: $card_name}), (sub:SubType {name: $card_subtype}) ",
+                    "CREATE (card)->[:IS_A]->(sub) ",
+                    card_name=card.name,
+                    card_subtype=subtype
+                ).single()[0]
+            )
+        return results
+    
+    @staticmethod
+    def _create_card_set_rel(tx, card):
+        result = tx.run(
+            "MATCH (card:Card {name: $card_name}), (set:Set {name: $card_set}) ",
+            "CREATE (card)->[:WAS_RELEASED_IN]->(set) ",
+            card_name=card.name,
+            card_set=card.set_name
+        )
+
+        return result.single()[0]
+
 
