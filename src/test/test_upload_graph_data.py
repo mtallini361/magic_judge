@@ -54,3 +54,18 @@ def test_upload_remove_card_set():
     print(removed)
 
     gdb.close()
+
+def test_upload_card_rel():
+    gdb = CardGraphDatabase()
+    card = Card.find("386616")
+    gdb.upload_card(card)
+    gdb.upload_card_type(card.type)
+    for spr in card.supertypes:
+        gdb.upload_card_supertype(spr)
+    for sub in card.subtypes:
+        gdb.upload_card_subtype(sub)
+    gdb.upload_card_set(Set.find(card.set))
+    uploaded = gdb.create_card_rels(card)
+    print(uploaded)
+
+    gdb.close()

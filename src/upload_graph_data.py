@@ -1,5 +1,6 @@
 import os
 import requests
+from mtgsdk import Type, Supertype, Subtype, Set
 from requests.auth import HTTPBasicAuth
 from neo4j import GraphDatabase
 
@@ -46,12 +47,12 @@ class CardGraphDatabase:
     def upload_card_type(self, card_type):
         with self.driver.session() as session:
             result = session.execute_write(self._create_card_type_node, card_type)
-        return result
+        return "\n".join(result)
     
     def remove_card_type(self, card_type):
         with self.driver.session() as session:
             result = session.execute_write(self._delete_card_type_node, card_type)
-        return result
+        return "\n".join(result)
     
     def upload_card_supertype(self, supertype):
         with self.driver.session() as session:
@@ -82,6 +83,28 @@ class CardGraphDatabase:
         with self.driver.session() as session:
             result = session.execute_write(self._delete_card_set_node, set)
         return result
+    
+    def create_all_attr_nodes(self):
+        for t in Type.all():
+            self.upload_card_type(t)
+
+        for spr in Supertype.all():
+            self.upload_card_supertype(spr)
+
+        for sub in Subtype.all():
+            self.upload_card_subtype(sub)
+
+        for set in Set.all():
+            self.upload_card_set(set)
+
+    def create_card_rels(self, card):
+        results = []
+        with self.driver.session() as session:
+            results += session.execute_write(self._create_card_type_rel, card)
+            results += session.execute_write(self._create_card_supertype_rel, card)
+            results += session.execute_write(self._create_card_subtype_rel, card)
+            results.append(session.execute_write(self._create_card_set_rel, card))
+        return results
 
     @staticmethod
     def _create_card_node(tx, card):
@@ -111,23 +134,33 @@ class CardGraphDatabase:
     
     @staticmethod
     def _create_card_type_node(tx, card_type):
-        result = tx.run(
-            "CREATE (t:Type) "
-            "SET t.name = $name "
-            "RETURN t.name + ' node created at id ' + id(t)",
-            name=card_type
-        )
-        return result.single()[0]
+        results = []
+        for token in card_type.split(" "):
+            if token not in Supertype.all() and token not in Subtype.all() and token.isalpha():
+                results.append(
+                    tx.run(
+                        "CREATE (t:Type) "
+                        "SET t.name = $name "
+                        "RETURN t.name + ' node created at id ' + id(t)",
+                        name=token
+                    ).single()[0]
+                )
+        return results
     
     @staticmethod
     def _delete_card_type_node(tx, card_type):
-        result = tx.run(
-            "MATCH (t:Type {name: $name}) "
-            "DELETE t "
-            "RETURN $name + ' node(s) deleted from id ' + id(t)",
-            name=card_type
-        )
-        return result.single()[0]
+        results = []
+        for token in card_type.split(" "):
+            if token not in Supertype.all() and token not in Subtype.all() and token.isalpha():
+                results.append(
+                    tx.run(
+                        "MATCH (t:Type {name: $name}) "
+                        "DELETE t "
+                        "RETURN $name + ' node(s) deleted from id ' + id(t)",
+                        name=card_type
+                    ).single()[0]
+                )
+        return results
     
     @staticmethod
     def _create_card_supertype_node(tx, card_supertype):
@@ -197,21 +230,29 @@ class CardGraphDatabase:
     
     @staticmethod
     def _create_card_type_rel(tx, card):
-        result = tx.run(
-            "MATCH (card:Card {name: $card_name}), (type:Type {name: $type_name}) ",
-            "CREATE (card)-[:IS_A]->(type) ",
-            card_name=card.name,
-            type_name=card.type
-        )
-        return result.single()[0]
+        results = []
+        for token in card.type.split(" "):
+            if token not in Supertype.all() and token not in Subtype.all() and token.isalpha():
+                 results.append(
+                     tx.run(
+                        "MATCH (card:Card {name: $card_name}), (type:Type {name: $type_name}) "
+                        "CREATE (card)-[:IS_A]->(type) "
+                        "RETURN $card_name + ' to ' + type.name + ' relation created'",
+                        card_name=card.name,
+                        type_name=token
+                    ).single()[0]
+                 )
+
+        return results
     
     @staticmethod
     def _create_card_supertype_rel(tx, card):
         results = []
         for supertype in card.supertypes:
             results.append(tx.run(
-                "MATCH (card:Card {name: $card_name}), (spr:SuperType {name: $card_supertype}) ",
-                "CREATE (card)->[:IS]->(spr) ",
+                "MATCH (card:Card {name: $card_name}), (spr:SuperType {name: $card_supertype}) "
+                "CREATE (card)-[:IS]->(spr) "
+                "RETURN card.name + ' to ' + spr.name + ' relation created'",
                 card_name=card.name,
                 card_supertype=supertype
             ).single()[0])
@@ -223,8 +264,9 @@ class CardGraphDatabase:
         for subtype in card.subtypes:
             results.append(
                 tx.run(
-                    "MATCH (card:Card {name: $card_name}), (sub:SubType {name: $card_subtype}) ",
-                    "CREATE (card)->[:IS_A]->(sub) ",
+                    "MATCH (card:Card {name: $card_name}), (sub:SubType {name: $card_subtype}) "
+                    "CREATE (card)-[:IS_A]->(sub) "
+                    "RETURN card.name + ' to ' + sub.name + ' relation created'",
                     card_name=card.name,
                     card_subtype=subtype
                 ).single()[0]
@@ -234,8 +276,9 @@ class CardGraphDatabase:
     @staticmethod
     def _create_card_set_rel(tx, card):
         result = tx.run(
-            "MATCH (card:Card {name: $card_name}), (set:Set {name: $card_set}) ",
-            "CREATE (card)->[:WAS_RELEASED_IN]->(set) ",
+            "MATCH (card:Card {name: $card_name}), (set:Set {name: $card_set}) "
+            "CREATE (card)-[:WAS_RELEASED_IN]->(set) "
+            "RETURN card.name + ' to ' + set.name + ' relation created'",
             card_name=card.name,
             card_set=card.set_name
         )
