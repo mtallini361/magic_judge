@@ -68,4 +68,18 @@ def test_upload_card_rel():
     uploaded = gdb.create_card_rels(card)
     print(uploaded)
 
+    #Remove all nodes along with relations
+    removed = gdb.remove_card(card)
+    print(removed)
+    removed = gdb.remove_card_type(card.type)
+    print(removed)
+    for spr in card.supertypes:
+        removed = gdb.remove_card_supertype(spr)
+        print(removed)
+    for sub in card.subtypes:
+        removed = gdb.remove_card_subtype(sub)
+        print(removed)
+    removed = gdb.remove_card_set(Set.find(card.set))
+    print(removed)
+
     gdb.close()
