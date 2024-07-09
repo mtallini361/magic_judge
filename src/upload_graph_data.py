@@ -124,12 +124,16 @@ class CardGraphDatabase:
     
     @staticmethod
     def _delete_card_node(tx, card):
-        result = tx.run(
-            "MATCH (card: Card {name: $name}) "
-            "DELETE card "
-            "RETURN $name + ' node(s) deleted from id ' + id(card)",
-            name=card.name
-        )
+        try:
+            result = tx.run(
+                "MATCH (card: Card {name: $name}) "
+                "DETACH DELETE card "
+                "RETURN $name + ' node(s) deleted from id ' + id(card)",
+                name=card.name
+            )
+        except Exception as e:
+            print(f"Unable to delete {card.name} card node")
+            raise e
         return result.single()[0]
     
     @staticmethod
@@ -152,14 +156,19 @@ class CardGraphDatabase:
         results = []
         for token in card_type.split(" "):
             if token not in Supertype.all() and token not in Subtype.all() and token.isalpha():
-                results.append(
-                    tx.run(
-                        "MATCH (t:Type {name: $name}) "
-                        "DELETE t "
-                        "RETURN $name + ' node(s) deleted from id ' + id(t)",
-                        name=card_type
-                    ).single()[0]
-                )
+                try:
+                    results.append(
+                        tx.run(
+                            "MATCH (t:Type {name: $name}) "
+                            "DETACH DELETE t "
+                            "RETURN $name + ' node(s) deleted from id ' + id(t)",
+                            name=token
+                        ).single()[0]
+                    )
+                except Exception as e:
+                    print(f"Unable to delete {token} type node")
+                    raise e
+
         return results
     
     @staticmethod
@@ -174,12 +183,16 @@ class CardGraphDatabase:
     
     @staticmethod
     def _delete_card_supertype_node(tx, card_supertype):
-        result = tx.run(
-            "MATCH (spr:SuperType {name: $name}) "
-            "DELETE spr "
-            "RETURN $name + ' node(s) deleted from id ' + id(spr)",
-            name=card_supertype
-        )
+        try:
+            result = tx.run(
+                "MATCH (spr:SuperType {name: $name}) "
+                "DETACH DELETE spr "
+                "RETURN $name + ' node(s) deleted from id ' + id(spr)",
+                name=card_supertype
+            )
+        except Exception as e:
+            print(f"Unable to delete {card_supertype} supertype node")
+            raise e
         return result.single()[0]
     
     @staticmethod
@@ -194,12 +207,15 @@ class CardGraphDatabase:
     
     @staticmethod
     def _delete_card_subtype_node(tx, card_subtype):
-        result = tx.run(
-            "MATCH (sub:SubType {name: $name}) "
-            "DELETE sub "
-            "RETURN $name + ' node(s) deleted from id ' + id(sub)",
-            name=card_subtype
-        )
+        try:
+            result = tx.run(
+                "MATCH (sub:SubType {name: $name}) "
+                "DETACH DELETE sub "
+                "RETURN $name + ' node(s) deleted from id ' + id(sub)",
+                name=card_subtype
+            )
+        except Exception as e:
+            print(f"Unable to delete {card_subtype} subtype node")
         return result.single()[0]
 
     @staticmethod
@@ -220,12 +236,16 @@ class CardGraphDatabase:
     
     @staticmethod
     def _delete_card_set_node(tx, card_set):
-        result = tx.run(
-            "MATCH (set: Set {name: $name}) "
-            "DELETE set "
-            "RETURN $name + ' node(s) deleted from id ' + id(set)",
-            name=card_set.name
-        )
+        try:
+            result = tx.run(
+                "MATCH (set: Set {name: $name}) "
+                "DETACH DELETE set "
+                "RETURN $name + ' node(s) deleted from id ' + id(set)",
+                name=card_set.name
+            )
+        except Exception as e:
+            print(f"Unable to delete {card_set.name} set node")
+            raise e
         return result.single()[0]
     
     @staticmethod
